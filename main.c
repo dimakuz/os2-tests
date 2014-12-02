@@ -368,7 +368,6 @@ static int test_fork_overdue_requested_time() {
 
 static int test_read_stats_150_records() {
 	struct switch_info infos[150];
-	printf("%ld\n", read_stats(&infos));
 	return 150 == read_stats(&infos);
 }
 
