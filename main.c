@@ -318,12 +318,16 @@ static int ____fork_child_requested_time(void *p) {
 static int __fork_child_requested_time(void *p) {
 	int rem;
 	int child_req_time;
+	int assumed_time;
+
 	if (become_lshort(1000, 20) != 0)
 		return 0;
 	rem = rem_time(getpid());
 	child_req_time = run_forked(____fork_child_requested_time, NULL);
 
-	return (rem * 51 / 100) == child_req_time;
+	assumed_time = (rem * 51) / 100;
+	return (assumed_time - 10) <  child_req_time &&
+		(assumed_time + 10) > child_req_time;
 }
 
 static int test_fork_requested_time() {
@@ -333,6 +337,7 @@ static int test_fork_requested_time() {
 static int __fork_parent_remaining_time(void *p) {
 	int rem;
 	int rem_after_fork;
+	int assumed_time;
 	if (become_lshort(1000, 20) != 0)
 		return 0;
 	rem = rem_time(getpid());
@@ -344,7 +349,10 @@ static int __fork_parent_remaining_time(void *p) {
 	}
 	rem_after_fork = rem_time(getpid());
 
-	return (rem * 49  / 100) == rem_after_fork;
+	assumed_time = rem - (rem * 51) / 100;
+
+	return (assumed_time - 10) < rem_after_fork &&
+		(assumed_time + 10) > rem_after_fork;
 }
 
 static int test_fork_parent_remaining_time() {
