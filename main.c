@@ -1,3 +1,4 @@
+#include <sys/select.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -5,6 +6,7 @@
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <syscall.h>
 #include <time.h>
 #include <unistd.h>
@@ -374,6 +376,50 @@ static int test_fork_overdue_requested_time() {
 	return run_forked(__fork_child_overdue_requested_time, NULL);
 }
 
+#define NR_KIDS 10
+#define FIXTURE "*9876543210"
+static int __lshort_correct_prio(void *p) {
+	pid_t children[NR_KIDS];
+	int pipes[2];
+	char buf[NR_KIDS + 1];
+	int i;
+	fd_set fds;
+	FD_ZERO(&fds);
+
+	if (pipe(pipes)) {
+		perror("pipe");
+		return 0;
+	}
+	FD_SET(pipes[0], &fds);
+
+	if (become_lshort(30 * 1000, 20) != 0)
+		return 0;
+
+	for (i = 0; i < NR_KIDS; i++) {
+		children[i] = fork();
+		if (!children[i]) {
+			char c = '0' + i;
+			select(pipes[0] + 1, &fds, NULL, NULL, NULL);
+			while (write(pipes[1], &c, 1) != 1)
+				;
+			exit(0);
+		}
+	}
+
+	write(pipes[1], "*", 1);
+
+	for (i = 0; i < NR_KIDS; i++) {
+		waitpid(children[i], NULL, 0);
+	}
+
+	if (read(pipes[0], buf, NR_KIDS + 1) != NR_KIDS + 1)
+		return 0;
+	return memcmp(buf, FIXTURE, NR_KIDS + 1) == 0;
+}
+
+static int test_lshort_correct_prio() {
+	return run_forked(__lshort_correct_prio, NULL);
+}
 static int test_read_stats_150_records() {
 	struct switch_info infos[150];
 	return 150 == read_stats(&infos);
@@ -407,6 +453,7 @@ struct test_def tests[] = {
 	DEFINE_TEST(test_fork_requested_time),
 	DEFINE_TEST(test_fork_parent_remaining_time),
 	DEFINE_TEST(test_fork_overdue_requested_time),
+	DEFINE_TEST(test_lshort_correct_prio),
 	DEFINE_TEST(test_read_stats_150_records),
 	{ NULL, "The end" },
 };
