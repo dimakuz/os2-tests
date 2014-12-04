@@ -557,7 +557,7 @@ struct test_def tests[] = {
 int main() {
 	struct test_def *current = &tests[0];
 	while (current->func) {
-		printf("%s:\t%s\n",
+		printf("%-35s:\t%s\n",
 		       current->name,
 		       (1 == current->func()) ? "PASS" : "FAIL");
 		current++;
